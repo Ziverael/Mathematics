@@ -1,0 +1,255 @@
+Run simulation for density 0.0 ...
+Finished 1000 simulations for given density. Total time :1.5193934440612793 seconds
+Mean consensus time:  0.0
+Positive consensus:  0.0
+----------
+Run simulation for density 0.02 ...
+Finished 1000 simulations for given density. Total time :157.96816658973694 seconds
+Mean consensus time:  9656.29
+Positive consensus:  0.021
+----------
+Run simulation for density 0.04 ...
+Finished 1000 simulations for given density. Total time :286.72554063796997 seconds
+Mean consensus time:  17204.614
+Positive consensus:  0.043
+----------
+Run simulation for density 0.06 ...
+Finished 1000 simulations for given density. Total time :426.08692741394043 seconds
+Mean consensus time:  26604.291
+Positive consensus:  0.067
+----------
+Run simulation for density 0.08 ...
+Finished 1000 simulations for given density. Total time :533.9978742599487 seconds
+Mean consensus time:  33355.181
+Positive consensus:  0.082
+----------
+Run simulation for density 0.1 ...
+Finished 1000 simulations for given density. Total time :669.7255961894989 seconds
+Mean consensus time:  41719.949
+Positive consensus:  0.097
+----------
+Run simulation for density 0.12 ...
+Finished 1000 simulations for given density. Total time :720.4951231479645 seconds
+Mean consensus time:  44945.928
+Positive consensus:  0.11
+----------
+Run simulation for density 0.14 ...
+Finished 1000 simulations for given density. Total time :883.2679872512817 seconds
+Mean consensus time:  53417.153
+Positive consensus:  0.138
+----------
+Run simulation for density 0.16 ...
+Finished 1000 simulations for given density. Total time :947.973562002182 seconds
+Mean consensus time:  57414.092
+Positive consensus:  0.148
+----------
+Run simulation for density 0.18 ...
+Finished 1000 simulations for given density. Total time :1007.2620675563812 seconds
+Mean consensus time:  62302.282
+Positive consensus:  0.19
+----------
+Run simulation for density 0.2 ...
+Finished 1000 simulations for given density. Total time :1081.9665286540985 seconds
+Mean consensus time:  66328.361
+Positive consensus:  0.168
+----------
+Run simulation for density 0.22 ...
+Finished 1000 simulations for given density. Total time :1299.7411847114563 seconds
+Mean consensus time:  72937.19
+Positive consensus:  0.208
+----------
+Run simulation for density 0.24 ...
+Finished 1000 simulations for given density. Total time :1528.307249546051 seconds
+Mean consensus time:  83362.539
+Positive consensus:  0.245
+----------
+Run simulation for density 0.26 ...
+Finished 1000 simulations for given density. Total time :1458.8065588474274 seconds
+Mean consensus time:  86895.183
+Positive consensus:  0.289
+----------
+Run simulation for density 0.28 ...
+Finished 1000 simulations for given density. Total time :1321.7245953083038 seconds
+Mean consensus time:  82614.422
+Positive consensus:  0.261
+----------
+Run simulation for density 0.3 ...
+Finished 1000 simulations for given density. Total time :1458.1730244159698 seconds
+Mean consensus time:  90860.387
+Positive consensus:  0.298
+----------
+Run simulation for density 0.32 ...
+Finished 1000 simulations for given density. Total time :1534.4583978652954 seconds
+Mean consensus time:  95996.306
+Positive consensus:  0.33
+----------
+Run simulation for density 0.34 ...
+Finished 1000 simulations for given density. Total time :1441.2850978374481 seconds
+Mean consensus time:  90086.753
+Positive consensus:  0.333
+----------
+Run simulation for density 0.36 ...
+Finished 1000 simulations for given density. Total time :1470.5934119224548 seconds
+Mean consensus time:  91737.921
+Positive consensus:  0.382
+----------
+Run simulation for density 0.38 ...
+Finished 1000 simulations for given density. Total time :1499.073852300644 seconds
+Mean consensus time:  93741.351
+Positive consensus:  0.374
+----------
+Run simulation for density 0.4 ...
+Finished 1000 simulations for given density. Total time :1500.725991487503 seconds
+Mean consensus time:  93991.722
+Positive consensus:  0.404
+----------
+Run simulation for density 0.42 ...
+Finished 1000 simulations for given density. Total time :1576.2517771720886 seconds
+Mean consensus time:  98618.415
+Positive consensus:  0.411
+----------
+Run simulation for density 0.44 ...
+Finished 1000 simulations for given density. Total time :1632.1818964481354 seconds
+Mean consensus time:  101938.377
+Positive consensus:  0.438
+----------
+Run simulation for density 0.46 ...
+Finished 1000 simulations for given density. Total time :1658.30970287323 seconds
+Mean consensus time:  103667.315
+Positive consensus:  0.464
+----------
+Run simulation for density 0.48 ...
+Finished 1000 simulations for given density. Total time :1634.2073149681091 seconds
+Mean consensus time:  101964.825
+Positive consensus:  0.481
+----------
+Run simulation for density 0.5 ...
+Finished 1000 simulations for given density. Total time :1693.4550561904907 seconds
+Mean consensus time:  105851.354
+Positive consensus:  0.502
+----------
+Run simulation for density 0.52 ...
+Finished 1000 simulations for given density. Total time :1632.3378117084503 seconds
+Mean consensus time:  102054.91
+Positive consensus:  0.495
+----------
+Run simulation for density 0.54 ...
+Finished 1000 simulations for given density. Total time :1610.333344221115 seconds
+Mean consensus time:  99450.831
+Positive consensus:  0.517
+----------
+Run simulation for density 0.56 ...
+Finished 1000 simulations for given density. Total time :1549.195941209793 seconds
+Mean consensus time:  96760.717
+Positive consensus:  0.554
+----------
+Run simulation for density 0.58 ...
+Finished 1000 simulations for given density. Total time :1601.1366732120514 seconds
+Mean consensus time:  100183.396
+Positive consensus:  0.585
+----------
+Run simulation for density 0.6 ...
+Finished 1000 simulations for given density. Total time :1499.005516052246 seconds
+Mean consensus time:  93916.127
+Positive consensus:  0.598
+----------
+Run simulation for density 0.62 ...
+Finished 1000 simulations for given density. Total time :1564.4265213012695 seconds
+Mean consensus time:  97661.86
+Positive consensus:  0.621
+----------
+Run simulation for density 0.64 ...
+Finished 1000 simulations for given density. Total time :1603.169933795929 seconds
+Mean consensus time:  100239.522
+Positive consensus:  0.654
+----------
+Run simulation for density 0.66 ...
+Finished 1000 simulations for given density. Total time :1515.6677718162537 seconds
+Mean consensus time:  94788.815
+Positive consensus:  0.67
+----------
+Run simulation for density 0.68 ...
+Finished 1000 simulations for given density. Total time :1370.0205445289612 seconds
+Mean consensus time:  85607.149
+Positive consensus:  0.675
+----------
+Run simulation for density 0.7000000000000001 ...
+Finished 1000 simulations for given density. Total time :1505.794946193695 seconds
+Mean consensus time:  94050.336
+Positive consensus:  0.68
+----------
+Run simulation for density 0.72 ...
+Finished 1000 simulations for given density. Total time :1349.8440914154053 seconds
+Mean consensus time:  84454.395
+Positive consensus:  0.713
+----------
+Run simulation for density 0.74 ...
+Finished 1000 simulations for given density. Total time :1194.1927711963654 seconds
+Mean consensus time:  74649.398
+Positive consensus:  0.716
+----------
+Run simulation for density 0.76 ...
+Finished 1000 simulations for given density. Total time :1126.9820866584778 seconds
+Mean consensus time:  70499.296
+Positive consensus:  0.783
+----------
+Run simulation for density 0.78 ...
+Finished 1000 simulations for given density. Total time :1299.6003184318542 seconds
+Mean consensus time:  81196.627
+Positive consensus:  0.772
+----------
+Run simulation for density 0.8 ...
+Finished 1000 simulations for given density. Total time :1058.4596419334412 seconds
+Mean consensus time:  66119.827
+Positive consensus:  0.809
+----------
+Run simulation for density 0.8200000000000001 ...
+Finished 1000 simulations for given density. Total time :1059.8612911701202 seconds
+Mean consensus time:  66269.107
+Positive consensus:  0.819
+----------
+Run simulation for density 0.84 ...
+Finished 1000 simulations for given density. Total time :911.3221554756165 seconds
+Mean consensus time:  56992.044
+Positive consensus:  0.839
+----------
+Run simulation for density 0.86 ...
+Finished 1000 simulations for given density. Total time :922.8027501106262 seconds
+Mean consensus time:  57722.573
+Positive consensus:  0.854
+----------
+Run simulation for density 0.88 ...
+Finished 1000 simulations for given density. Total time :672.812509059906 seconds
+Mean consensus time:  42014.094
+Positive consensus:  0.883
+----------
+Run simulation for density 0.9 ...
+Finished 1000 simulations for given density. Total time :661.3840601444244 seconds
+Mean consensus time:  41367.475
+Positive consensus:  0.893
+----------
+Run simulation for density 0.92 ...
+Finished 1000 simulations for given density. Total time :584.2361128330231 seconds
+Mean consensus time:  36210.312
+Positive consensus:  0.917
+----------
+Run simulation for density 0.9400000000000001 ...
+Finished 1000 simulations for given density. Total time :400.07255578041077 seconds
+Mean consensus time:  25024.234
+Positive consensus:  0.939
+----------
+Run simulation for density 0.96 ...
+Finished 1000 simulations for given density. Total time :283.19370436668396 seconds
+Mean consensus time:  17612.689
+Positive consensus:  0.957
+----------
+Run simulation for density 0.98 ...
+Finished 1000 simulations for given density. Total time :136.10642552375793 seconds
+Mean consensus time:  8524.554
+Positive consensus:  0.983
+----------
+Run simulation for density 1.0 ...
+Finished 1000 simulations for given density. Total time :0.019072771072387695 seconds
+Mean consensus time:  0.0
+Positive consensus:  1.0
+----------

@@ -1,0 +1,188 @@
+---
+title: "Estymatory największej wiarygodności i metody optymalizacji"
+author: "Weronika Zmyślona, Krzysztof Jankowski"
+date: '2022-11-03'
+output:
+  beamer_presentation:
+    fonttheme: "structurebold"
+    includes:
+      in_header: header.tex
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Estymatory Największej Wiarogodności
+\tiny Niech $X\sim\mathcal{N}(\mu=3,\sigma^2=5).$
+\tiny 
+   $$
+    \begin{gathered}
+    L(x_1,\dots,x_n;\theta_1,\theta_2)=\prod^n{i=1}\frac{\text{e}^{-\frac{1}{2}}\left(\frac{x_i-\theta_1}{\theta_2}\right)^2}{\sqrt{2\pi}\theta_2}\\
+    \log L(x_1,\dots,x_n;\theta_1,\theta_2)=\sum^n{i=1}\left[\log\frac{1}{\sqrt{2\pi}\theta_2}-\frac{1}{2}\left(\frac{x_i-\theta_1}{\theta_2}\right)^2\right]=\\
+    -n(0.5\log(2\pi)+\log\theta_2)-\frac{1}{2\theta_2^2}\sum^n{i=1}(x_i-\theta_1)^2.\\
+    \frac{\partial}{\partial\theta_1}L(x_1,\dots,x_n;\theta_1,\theta_2)=\theta_2^{-2}\sum^n{i=1}(x_i-\theta_1)=0\Leftrightarrow\theta_1=\sum^n{i=1}x_in^{-1}=\bar{x}.\\
+    \frac{\partial}{\partial\theta_2}L(x_1,\dots,x_n;\theta_1,\theta_2)=-\frac{n}{\theta_2}+\theta_2^{-3}\sum^n{i=1}(x_i-\theta_1)^2=0\Leftrightarrow\theta_2^2=\sum^n{i=1}(x_i-\theta_1)n^{-1}\Leftrightarrow\\
+    \theta_2=\sqrt{\frac{1}{n}\sum^n{i=1}(x_i-\bar{x})}.
+    \end{gathered}
+    $$
+
+
+
+## Estymacja parametrów
+\tiny
+```{r echo=TRUE}
+mu <- 3; sigma2 <- 5; n <- 1000
+set.seed(123)
+X <- rnorm(n, mu, sqrt(sigma2))
+est_mu <- mean(X)
+est_sigma2 <- var(X)
+est_mu; est_sigma2 
+```
+
+## Monte Carlo
+```{r, echo=FALSE}
+mu <- 3
+sigma2 <- 5
+n <- 1000
+
+set.seed(123)
+
+est_mu <- c()
+est_sigma2 <- c()
+
+for (i in 1:n) {
+  X <- rnorm(n, mu, sqrt(sigma2))
+  est_mu[i] <- mean(X)
+  est_sigma2[i] <- var(X)
+}
+
+par(mfrow = c(1, 2))
+boxplot(est_mu, col = 'grey',
+        ylab = "estymowana wartość", main = "Estymator średniej")
+boxplot(est_sigma2, col = 'grey',
+        main = "Esymator wariancji")
+```
+\small
+$\vspace{-0.5cm}$
+$$\hspace{0.4cm} Var(\hat{\mu}) \approx 0.0045 \hspace{3cm} Var(\hat{\sigma^2}) \approx 0.0464$$
+$$\hspace{0.4cm} \text{Bias}(\hat{\mu}) \approx -0.0012 \hspace{3cm} \text{Bias}(\hat{\sigma^2}) \approx -0.0003$$
+
+
+## `stats::nlm`
+\tiny
+```{r, echo=TRUE, warning=FALSE}
+X.mean <- 3; X.var <- 5; n <- 1000;
+starting.point <- c(5, 5);
+L <-function(params, xs){
+    theta1 <- params[1];
+    theta2 <- params[2];
+    n <- length(xs);
+    L <- -n * (0.5 * log(2 * pi) + log(theta2)) -
+    (0.5 * sum( (xs - theta1) * (xs - theta1))) /
+    (theta2 ** 2);
+    return(-L);
+}
+xs<- rnorm(n, X.mean, sqrt(X.var));
+eval <- stats::nlm(L, p =  starting.point, xs = xs, hessian = TRUE);
+est.mean <- eval$estimate[1];
+est.var <- eval$estimate[2] ** 2;
+est.mean; est.var;
+```
+
+
+## Monte Carlo (`stats::nlm`)
+```{r, echo=TRUE, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE);
+X.mean <- 3;
+X.var <- 5;
+N <- 1000;
+n <- 1000;
+starting.point <- c(5, 5);
+
+L <-function(params, xs){
+    theta1 <- params[1];
+    theta2 <- params[2];
+    n <- length(xs);
+    L <- -n * (0.5 * log(2 * pi) + log(theta2)) - (0.5 * sum( (xs - theta1) * (xs - theta1) )) / (theta2 ** 2);
+    return(-L);
+}
+est.mean <- numeric(N);
+est.var <- numeric(N);
+
+for(i in  1:N){
+    xs<- rnorm(n, X.mean, sqrt(X.var));
+    eval <- stats::nlm(L, p =  starting.point, xs = xs, hessian = TRUE);
+    est.mean[i] <- eval$estimate[1];
+    est.var[i] <- eval$estimate[2] ** 2;
+}
+
+```
+
+```{r echo=FALSE}
+#kod do boxplot
+par(mfrow = c(1, 2))
+boxplot(est.mean, col = 'grey',
+        ylab = "estymowana wartość", main = "Estymator średniej")
+boxplot(est.var, col = 'grey',
+        main = "Esymator wariancji")
+```
+\small
+$\vspace{-0.5cm}$
+$$\hspace{0.4cm} Var(\hat{\mu}) \approx 0.0049 \hspace{3cm} Var(\hat{\sigma^2}) \approx 0.0490$$
+$$\hspace{0.4cm} \text{Bias}(\hat{\mu}) \approx -0.0035 \hspace{3cm} \text{Bias}(\hat{\sigma^2}) \approx -0.0074$$
+
+## `stats4::mle`
+\tiny
+```{r, echo=TRUE}
+mu <- 3; sigma2 <- 5; n <- 1000
+set.seed(123)
+X <- rnorm(n, mu, sqrt(sigma2))
+neg_log_lik_gaussian <- function(mu,sigma2) {
+  -sum(dnorm(X, mean=mu, sd=sqrt(sigma2), log=TRUE))}
+gaussian_fit <- stats4::mle(neg_log_lik_gaussian, 
+                    start=list(mu=1, sigma2=1),
+                    method="L-BFGS-B")
+gaussian_fit@coef
+```
+
+## Monte Carlo (`stats4::mle`)
+\tiny
+```{r, echo=FALSE}
+library(stats4)
+
+# Monte Carlo
+
+mu <- 3
+sigma2 <- 5
+n <- 1000
+set.seed(123)
+
+neg_log_lik_gaussian <- function(mu,sigma2) {
+  -sum(dnorm(X, mean=mu, sd=sqrt(sigma2), log=TRUE))
+}
+
+est_mu_mle <- c()
+est_sigma2_mle <- c()
+
+for (i in 1:n) {
+  X <- rnorm(n, mu, sqrt(sigma2))
+  gaussian_fit <- mle(neg_log_lik_gaussian, 
+                      start=list(mu=1, sigma2=1), 
+                      method="L-BFGS-B")   #BFGS
+  est_mu_mle[i] <- gaussian_fit@coef[1]
+  est_sigma2_mle[i] <- gaussian_fit@coef[2]
+}
+
+par(mfrow = c(1, 2))
+boxplot(est_mu_mle, col = 'grey',
+        ylab = "estymowana wartość", main = "Esymator średniej")
+boxplot(est_sigma2_mle, col = 'grey', main = "Esymator wariancji")
+```
+
+\small
+$\vspace{-0.5cm}$
+$$\hspace{0.4cm} Var(\hat{\mu}) \approx 0.0045 \hspace{3cm} Var(\hat{\sigma^2}) \approx 0.0463$$
+$$\hspace{0.4cm} \text{Bias}(\hat{\mu}) \approx -0.0012 \hspace{3cm} \text{Bias}(\hat{\sigma^2}) \approx -0.0053$$

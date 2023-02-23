@@ -1,0 +1,109 @@
+---
+title: "Raport 2"
+author: "Krzysztof Jankowski"
+date: '2022-10-13'
+output:
+  beamer_presentation
+---
+
+\begin{verbatim}
+data <- faithful$eruptions;
+library("e1071");
+\end{verbatim}
+```{r echo = FALSE}
+data <- faithful$eruptions;
+library("e1071");
+```
+Do najpopularniejszych cech statystycznych należą momenty. Definiujemy k-ty moment.
+
+$$
+m_k=\text{E}\left[X^k\right],
+$$
+
+\begin{verbatim}
+median(data);
+quantile(data, probs = seq(0, 1, 0.25), na.rm = FALSE)
+mean(data);
+moment(data, order = 1, center = FALSE);
+\end{verbatim}
+```{r echo = FALSE}
+median(data);
+quantile(data, probs = seq(0, 1, 0.25), na.rm = FALSE)
+mean(data);
+moment(data, order = 1, center = FALSE);
+```
+
+## Jeden
+przy czym \(m_1 \) nazywamy  średnią i zwykle oznaczamy przez \(\mu\). Definiujemy też k-ty moment centralnt
+$$
+\mu_k=\text{E}\left[(X-\mu)^k\right]
+$$
+\begin{verbatim}
+var(data);
+sd(data)
+moment(data, order = 2, center = TRUE);
+sqrt(moment(data, order = 2, center = TRUE));
+\end{verbatim}
+```{r echo = FALSE}
+var(data);
+sd(data)
+moment(data, order = 2, center = TRUE);
+sqrt(moment(data, order = 2, center = TRUE))-3;
+```
+przy czym \(mu_2\) nazywamy wariancją i zwykle oznaczamy przez \(\sigma^2\). Pierwiastek wariancji nazywamy odchylenie standardowym i oznaczamy przez \(\sigma\). Definiujemy też k-ty moment standaryzowany
+$$
+\tilde\mu_k=\text{E}\left[(\frac{X-\mu}{\sigma})^k\right]
+$$
+przy czym \(\tilde\mu_3\) nazywamy skośnością i zwykle oznaczamy przez \(\gamma\) natomiast  \(\tilde\mu_4\) nazywamy kurtozą i zwykle oznaczamy przez \(\kappa\). Czasem wprowadza się kurtozę nadmiarową określoną wzorem \(K=\kappa-3\).
+\begin{verbatim}
+skewness(data);
+kurtosis(data)
+moment(data, order = 3, center = TRUE)/sqrt(moment(data, order = 2, center = TRUE)) ** 3;
+moment(data, order = 4, center = TRUE)/sqrt(moment(data, order = 2, center = TRUE)) ** 4-3;
+\end{verbatim}
+```{r echo = FALSE}
+skewness(data);
+kurtosis(data)
+moment(data, order = 3, center = TRUE)/(sqrt(moment(data, order = 2, center = TRUE)) )** 3;
+moment(data, order = 4, center = TRUE)/(sqrt(moment(data, order = 2, center = TRUE))) ** 4-3;
+```
+
+
+Podsumowując, niektóre momenty mają specjalne nazwy:
+```{r echo = FALSE, results = 'asis'}
+df <- data.frame(k = seq(1, 4), zwykły = c("średnia", "-", "-", "-"), centralny = c(0, "wariancja", "-", "-"), standaryzowany = c(0, 1, "skośność", "kurtoza"));
+
+knitr::kable(df, caption="Tabela momentów")
+```
+W zależności od warotści skośności i kurtozy, mamy różne nazwy dla rozkładów. Ze względu na skośnośc wyróżniamy rozkłady
+\begin{enumerate}
+\item lewoskośne - dla których \(\gamma<0\), ogon rozkładu jest dłuższy po lewej stronie oraz
+\item prawoskośne - dla których \(\gamma>0\), ogon rozkładu jest dłuższy po prawej.
+\end{enumerate}
+Ze względu na kurtozę wyróżniamy rozkłady:
+
+## Dwa 
+\begin{enumerate}
+\item platykurtyczne - dla których \(\kappa < 3\), rozkład spłaszczony\(^4\), chudsze ogony rozkładu,
+\item mezokurtyczne - dla których \(\kappa=3\), rozkład o ogonach podobnych do normalnego
+
+oraz
+\item leptokurtyczne - dla których \(\kappa>3\), rozkład wysmukły, grubsze ogony rozkładu
+\end{enumerate}
+W opisie pojawia się pojęcie grubszych ogonów (ang.\textit{fat tailed}). Jest ono bliskie pojęciu ciężkich ogonów (ang.\textit{heavy tailed}) lub długich ogonów (ang.\textit{long tailed}), jednak nie jest identyczne. Co ciekawe są to trzy bliskie sobie pojęcia o różnych definicjach, często mylonych lub stosowanych zamiennie. Wizualnie, wszystkie objawiają się w ten sam sposób - wartości skrajne występują częściej, niż miałoby to miejsce dla rozkładu normalnego. Formalnie, rozkład ma ciężki prawy ogon, jeśli
+$$
+\lim_{x\rightarrow\infty}{\text{e}^{tx}\text{P}(X>x)}=\infty\quad\forall t>0
+$$
+$$
+\lim_{x\rightarrow\infty}{\text{P}(X>x+t|X>x)}=1\quad\forall t>0
+$$
+Rozkład ma gruby prawy ogon, jeśli jest prawoskośny lub ma kurtozę większą od rozkładu normalnego. Ciężkie, długie lub grube lewe ogony definiuje się symetrycznie.
+
+Do ilustracji różnic pomiędzy rozkładami leptokurtycznymi, mezokurtycznymi i platykurtycznymi oraz rozkładów o różnych skośnościach, posłużymy się rozkładami należącymi do rodziny Sinh-arcsinh, oparymi o rozkład normalny. Rozkłady te powstają poprzez zastosowanie odpowiedniej transformaty. Dystrybuanta rozkładu Sinh-arcsinh zastosowanego na rozkład ma dystrybuantę
+$$
+F(x;\mu,\sigma,\nu,\tau)=\Phi\left(\sinh\left(\tau\text{arc sinh}\left(\frac{x-\mu}{\sigma}\right)-\nu\right)\right),
+$$
+gdzie \(\Phi\) to dystrybuanta standardowego rozkładu normalnego \(N(0,1)\), natomiast
+$$
+\sinh(x)=\frac{\text{e}^x-\text{e}^{-x}}{2},\quad\text{arc sinh}(x)=\ln{\left(x+\sqrt{1+x^2}\right)}
+$$
