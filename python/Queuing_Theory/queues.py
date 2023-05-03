@@ -18,23 +18,31 @@ The object will be Queue object or None if it is endpoint. You can create few en
 TO DO
 -use fliter and filterfalse for code imporvement
 -add statistics methods for analysis
--better display for system, jobs etc
--graph representation and giphs
+-better display for system, jobs etc[TO DO]
+-graph representation and giphs[TO DO]
 -add subclasses for system that let you build open and closed systems.
+-add reset method for all vertices and loop over it simply in systemreset[DONE]
+-add moving backwarg in simulation
+-add seed for system
 """
 ###IMPORT MODULES###
 import numpy as np
 import random
 from numba import jit
-from math import log, sin, pi
+from math import log, sin, pi, ceil
 import scipy
 import scipy.optimize
 import seaborn as sns
 import matplotlib.pyplot as plt
+import graphviz
+from make_giph import CWD_DIR, save_gif
+import os
+from secrets import token_hex
 
 from numpy.random import MT19937
 from numpy.random import RandomState, SeedSequence
 
+# from time import sleep #For debugging purposes
 
 ###Variables###
 MAX_ITERS = 100
@@ -398,9 +406,20 @@ class ArrivalVertex(Vert):
         # events.extend(enq_events)
         return events
 
-        
-        
-        
+    def reset(self):
+        self.obj.reset()
+    
+    def dot_repr(self):
+        name = self.name if self.name else self.key
+        repr = """
+            vert{}[shape=circle, label=<
+            <TABLE BORDER = "0">
+            <TR><TD>{}</TD></TR>
+            <TR><TD>{}</TD></TR>
+            </TABLE>
+            >];
+        """.format(self.key, name, self.obj.get_process())
+        return repr
 
 class QueueVertex(Vert):
     """Queue vertex class
@@ -541,6 +560,55 @@ class QueueVertex(Vert):
         else:
             events.append(enq_event)
         return events
+    
+    def reset(self):
+        self.jobs = {}
+        self.obj.reset()
+
+    def dot_repr(self) -> str:
+        repr = "subgraph cluster{}".format(self.name) + "{"
+        if self.name:
+            repr += "label={};".format("Queue" + self.name)
+        else:
+            repr += "label={};".format("Queue" + str(self.key))
+        buffer = self.get_buffer()
+        jobs = "BEG|"
+        for job in buffer.buffer.list_of_items:
+            jobs += str(job) + "|"
+        jobs += "|END"
+        #Nodes parameters
+        repr += """
+            vert{}[shape=square, label=<
+                <TABLE BORDER = "0">
+                <TR ><TD>Rule</TD><TD>Cap</TD><TD>Size</TD></TR>
+                <TR><TD>{}</TD><TD>{}</TD><TD>{}</TD></TR>
+                <TR><TD COLSPAN="3">{}</TD></TR>
+                </TABLE>
+                >];
+        """.format(self.key, buffer.rule, buffer.capacity, buffer.size, jobs)
+        servers_obj = self.get_servers()
+        servers = ""
+        for ind, server in enumerate(servers_obj):
+            payload = server.get_payload()
+            if not payload:
+                payload = "-"
+            id_ = str(self.key) + str(ind)
+            servers += """
+                server{}[shape=circle, label=<
+                <TABLE BORDER = "0">
+                <TR ><TD COLSPAN="2">{}</TD></TR>
+                <TR ><TD>Job:</TD><TD>{}</TD></TR>
+                
+                </TABLE>
+                >];
+                vert{} -> server{};
+                server{} -> merge{}[dir=none];
+            """.format(id_, server.service_type, payload, self.key, id_, id_, self.key)
+        repr += servers
+        repr += "merge{}[shape=point]".format(self.key)
+        repr += "}"
+        return repr
+        
         
 
 
@@ -576,7 +644,16 @@ class LeavingtVertex(Vert):
             jobs += str(i) + "\n"
         return "NodeID: {}\tLeavingVert with jobs:{}".format(self.get_key(), jobs)
     
+    def reset(self):
+        self.job_counter = 0
+        self.jobs = {}
 
+    def dot_repr(self):
+        repr = """
+            vert{}[shape=none, label="DONE"];
+        """.format(self.key)
+        return repr
+        
 
 class Graph:
     """
@@ -693,6 +770,24 @@ class Graph:
         return "Graph with {} verices and {} routes:\n{}".format(len(self.verts), len(self.edges), verts)
 
 
+    def dot_repr(self):
+        repr = """
+            digraph G{
+                rankdir=LR;
+                node[style=solid];
+                label=T;
+        """
+        #Create vertives representations
+        for vert in self.verts.values():
+            repr += vert.dot_repr()
+        for edge in self.edges:
+            if type(edge.from_) == QueueVertex:
+                repr += 'merge{} -> vert{}[label="p={}"];\n'.format(edge.from_.key, edge.to_.key, edge.prob)
+            else:
+                repr += 'vert{} -> vert{}[label="p={}"];\n'.format(edge.from_.key, edge.to_.key, edge.prob)
+        repr += "}"
+        return repr
+
     # def dot_repr(self) -> str:
     #     """
     #     Generate dot representation.
@@ -797,12 +892,13 @@ class ArrivalProcess():
     def get_arrivals_number(self):
         return self.arrivals_number
     
-    def reset_arrivals(self):
+    def reset(self):
         self.arrivals = []
         self.arrivals_number = 0
+        self.current_time = 0
 
     def get_process(self):
-        return self.process_type
+        return "{}({}t)".format(self.process_type, self.intensity)
     
     def set_process(self, type_):
         if type_ not in arrival_process.keys():
@@ -870,7 +966,7 @@ class Server():
             raise ValueError("No such random number generator.")
         self.intensity = intensity
         self.service_time_generator = rand_function[service_process]
-        self.service_type = service_process
+        self.service_type = service_process + "(" + str(intensity) + ")"
         self.payload = 0
 
     
@@ -1189,7 +1285,15 @@ class Queue():
             return result
         else:
             return self.servers[result].service()
-            
+
+    def reset(self):
+        [server.remove_payload() for server in self.get_servers()]
+        buff = self.get_buffer()
+        buff.size = 0
+        while not buff.is_empty():
+            buff.dequeue()
+
+
 
         
 
@@ -1355,6 +1459,8 @@ class Job():
 class System():
     """sumary_line
     
+    Attributes
+    ----------
     
     """
     
@@ -1377,6 +1483,7 @@ class System():
         self.time = 0
         self.history = []
         self._toogle_names = use_name
+        self.valid_graph = False
 
     def add_node(self, prev_node, node, prob = 1, name = "") -> None:
         """Add new component to the system. It is crucial to point out that this method add route from existing node to this new node so you cannot pass Arrival Process.
@@ -1392,6 +1499,7 @@ class System():
         None
         """
         self.system_graph.add_vert(node, prev_node, prob, name)
+        self.valid_graph = False
 
     def add_route(self, prev_node, next_node, prob = 1):
         """Add route beetwen two components of the system.
@@ -1405,6 +1513,7 @@ class System():
         None
         """
         self.system_graph.add_route(prev_node, next_node, prob)
+        self.valid_graph = False
     
     def get_queues(self):
         """Return QueueVerices"""
@@ -1419,6 +1528,10 @@ class System():
     def run(self, time_, verbose = False):
         if time_ < 0:
             raise ValueError("Finish time should be positive number.")
+        #Check graph
+        if not self.valid_graph:
+            self.system_graph._graph_validation_()
+            self.valid_graph = True
         # Generate events 
         num = 0
         events = []
@@ -1456,6 +1569,72 @@ class System():
                 for ev in events:
                     self.event_heap.insert(ev)
                 # map(lambda t: self.event_heap.insert(t), events)
+        
+    def initialize_simulation(self, time_):
+        """Initialize simulation. Clean after previous simulatoins and generate arrivals. Then build event heap.
+        """
+        if time_ < 0:
+            raise ValueError("Finish time should be positive number.")
+        #Check graph
+        if not self.valid_graph:
+            self.system_graph._graph_validation_()
+            self.valid_graph = True
+        #reset system
+        self.reset()
+        # Generate events 
+        num = 0
+        events = []
+        for arrVert in self.get_arrival_processes():
+            arrVert._set_arrival_counter_(num)
+            jobs, ev = arrVert.generate_arrivals(time_)
+            arrVert.generate_arrivals(time_)
+            jobsIds = [*map(lambda t: t.get_id(), jobs)]
+            self.jobs.update({id_ : job for id_, job in zip(jobsIds, jobs)})
+            events.extend(ev)
+            num = arrVert.get_arrivals_number()
+        self.event_heap.build_heap(events)
+        
+    def move_to(self, time_, relative = True , verbose = False):
+        # Set relative time
+        if relative:
+            time_ += self.time
+        else:
+            # Actually we do not support to go backward
+            if time_ < self.time:
+                raise ValueError("Cannot travel to the past in simulation.")
+        # Trigger all events
+        while not self.event_heap.is_empty():
+            # Tuple conditiona assignment hack
+            ev = (None, self.event_heap.get_min())
+            ev = ev[ev[1] <= time_]
+            if not ev:
+                break
+            if verbose:
+                print(ev)
+            # Store all parameters expected to trigger next events
+            ev_time = ev.get_time()
+            ev_job = self.jobs[ev.get_jobId()]
+            ev_node = self.system_graph.get_vertex(ev.get_nodeId())
+            self.history.append(ev)
+            if ev.get_type() == BIRTH:
+                events = ev_node.dequeue(ev.get_jobId(), ev_time)
+                for ev in events:
+                    self.event_heap.insert(ev)
+                # map(lambda t: self.event_heap.insert(t), events)
+            # elif ev.get_type() in (ARRIVAL, MISSING, CLOSED, WAITING, PROCESSING):
+                # continue
+                #ARRIVAL event is triggered during dequeue, but dequeue immediately trigger enqueue method of the next node so all actions are performed
+                #MISSING event is triggered in enqueue to QueueVertex and immediately set job status to missing. Nothing to do.
+                #CLOSED event is triggered in enqueue to LeavingVertex. Nothing to do. 
+            elif ev.get_type() == LEAVING:
+                events = ev_node.dequeue(ev.get_jobId(), ev_time)
+                for ev in events:
+                    self.event_heap.insert(ev)
+                # map(lambda t: self.event_heap.insert(t), events)
+            #Remove event from the heap
+            self.event_heap.pop()
+        self.time = time_
+
 
     def get_jobs(self) -> list:
         return list(self.jobs.values())
@@ -1470,11 +1649,61 @@ class System():
         return str(self)
     
     def reset(self):
-        self.jobs = []
+        self.jobs = {}
         self.event_heap = BinaryHeap()
         self.time = 0
         self.history = []
-        map(lambda t: t.reset(), self.get_arrival_processes())
+        [*map(lambda t: t.reset(), self.system_graph.get_vertices().values())]
+    
+    def dot_repr(self):
+        repr = self.system_graph.dot_repr()
+        repr = repr.replace('label=T;', 'label="T={}";'.format(self.time))
+        return repr
+    
+    def save_graph(self, name = "Queue"):
+        graphviz.Source(self.dot_repr()).render(name, format = "jpg")
+
+    def create_gif(self, time_, step_, name_ = "QueuingSystem", reset_flag = False):
+        """Save simulation as a gif with graphviz repersentaiton."""
+        bufferDir = "QueueGifBuffer" + token_hex()
+        iters = 10
+        #If directory exists try different name and raise error if there are too many aproaches
+        while os.path.exists(os.path.join(CWD_DIR, bufferDir)) and iters > 0:
+            iters -= 1
+            bufferDir = "QueueGifBuffer" + token_hex()
+        if iters <= 0:
+            raise ValueError("Cannot create temporary directory in {}".format(CWD_DIR))
+        # Initialize simulation
+        self.initialize_simulation(time_)
+        # Perform loop with move to next time steps and save graph jpg
+        step = step_
+        it = 0
+        while step <= time_:
+            it += 1
+            step += step_
+            self.move_to(step_)
+            self.save_graph(name = "{}/Queue_gif{}".format(bufferDir, it))
+        # If the last step not correspond to the end of simulation perform it manually
+        if step > time_:
+            self.move_to(time_, relative = False)
+            self.save_graph(name = "{}/Queue_gif{}".format(bufferDir, it + 1))
+        # Save gif
+        save_gif(os.path.join(CWD_DIR, bufferDir), name_ = name_)
+        #Reset system at the end of simulation
+        if reset_flag:
+            self.reset()
+    
+    
+    #     vetr_rep = lambda node_prev, node_next: "{}->{}\n{}[]"
+    #     code = """
+    #     digraph G\{
+    #         rankdir=LR
+    #         node [style = solid, shape = record]
+    #     """
+    #     for vert in self.system_graph.get_vertices().values():
+    #         code += "{}".format(vert.get_) + "\n"###########################
+    #     code += "\}"
+
 
 class Timer():
     """
