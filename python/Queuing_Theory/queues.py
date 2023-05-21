@@ -24,6 +24,20 @@ TO DO
 -add reset method for all vertices and loop over it simply in systemreset[DONE]
 -add moving backwarg in simulation
 -add seed for system
+
+TO DO
+Pass RNG instance from system to all components those need it. GOiing further, replace all random functions with generator methods. Finally add parameters for system to reseed generator and inplement move_to for prevoius time moments.
+
+Added:
++Queue
+-Buffer
++Server
+-Job
+-Event
++System
++Vert
+Passed genetator object.
+To DO: At Queue object verify, if during System initialization generator is passed correctly.
 """
 ###IMPORT MODULES###
 import numpy as np
@@ -39,8 +53,8 @@ from make_giph import CWD_DIR, save_gif
 import os
 from secrets import token_hex
 
-from numpy.random import MT19937
-from numpy.random import RandomState, SeedSequence
+# from numpy.random import MT19937
+# from numpy.random import RandomState, SeedSequence
 
 # from time import sleep #For debugging purposes
 
@@ -56,6 +70,12 @@ PROCESSING = "PROCESSING"
 LEAVING = "LEAVING"
 CLOSED = "CLOSED"
 
+
+###FUNCTIONS###
+#Thanks for Adil and Mark Ransom
+#https://stackoverflow.com/questions/5595425/what-is-the-best-way-to-compare-floats-for-almost-equality-in-python
+def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
+    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
 
 ###Supporting classes###
@@ -179,8 +199,7 @@ class Edge:
     to_   Endpoint
     prob    probability of following that edge
     
-    """
-    
+    """   
     def __init__(self, fr, to, prob = 1):
         self.from_ = fr
         self.to_ = to
@@ -203,7 +222,7 @@ class Edge:
  
     def set_prob(self, prob):
         self.prob = prob
-
+    
 
 class EdgeRouteError(Exception):
     def __init__(self, message = "Invalid route."):
@@ -221,6 +240,12 @@ class MathError(Exception):
     def __init__(self, message = "Forbiden math operation."):
         self.message = message
         super().__init__(self.message)
+
+class QueueingSystemError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
 
 
 class Vert:
@@ -240,7 +265,7 @@ class Vert:
     Arrival process cannot have observing neighbours.
     NULL cannot have observed neighbours.
     """
-    def __init__(self, key, obj, name = "") -> None:
+    def __init__(self, key, obj, name = "", seed_ = -1) -> None:
         if type(key) != type(0):
             raise TypeError
         self.key = key
@@ -249,8 +274,12 @@ class Vert:
         # self.observed_ngh = {}
         # self.observing_ngh = {}
         self.routes = {}
-
-
+        # Set seed
+        if isinstance(seed_, int):
+            self._seed = seed_ if seed_ >= 0 else int("".join([str(i) for i in np.random.randint(0,10,6)]))
+        else:
+            raise TypeError("seed must be integer value.")
+            
     def __add_route__(self, vert, prob = 1) -> None:
         """
         Add an  observed neighbour. The  neighbour is only a vertex to which you can travel
@@ -278,11 +307,19 @@ class Vert:
         if self.name and not force_key:
             return self.name
         return self.key
+    
+    def set_seed(self, seed_):
+        self._seed = seed_
+    
+    def get_seed(self):
+        return self._seed
 
     def _check_routes_(self):
         """Check if probabilities cumulates to 1 and raise exception if not"""
-        if sum([edge.get_prob() for edge in self.routes.values()]) != 1:
+        # if sum([edge.get_prob() for edge in self.routes.values()]) != 1:
+        if not isclose(sum([edge.get_prob() for edge in self.routes.values()]), 1):
             raise MathError("Probabilities should sum up to value 1.")
+        
 
 
     def __str__(self) -> str:
@@ -294,7 +331,6 @@ class Vert:
         for i in self.routes:
             routes += str(self.routes[i])
         return first_line + "\n" +  routes
-
 
     def __repr__(self) -> str:
         return str(self)
@@ -312,15 +348,16 @@ class Vert:
         else:
             ids, probs = zip(*self.routes.items())
             probs = [*map(lambda t: t.get_prob(), probs)]
-            vert = np.random.choice(ids, p = probs)
+            vert = self._generator.choice(ids, p = probs)
             return self.routes[vert].get_end()
 
 
 class ArrivalVertex(Vert):
-    def __init__(self, key, obj, name = "", arrival_counter = 0):
+    def __init__(self, key, obj, name = "", arrival_counter = 0, **kwargs):
         if not isinstance(obj, ArrivalProcess):
             raise TypeError("Arrival Vertex can only handle Arrival Process.")
-        super().__init__(key, obj, name)
+        super().__init__(key, obj, name, **kwargs)
+        self.obj.set_seed(self._seed)
         self.arrival_counter = arrival_counter
         self.history = {
             "Events" : [],
@@ -376,6 +413,11 @@ class ArrivalVertex(Vert):
     def set_process(self, type_):
         self.obj.set_process(type_)
     
+    def set_seed(self, seed_):
+        # super().set_seed(seed_)
+        self._seed = seed_
+        self.obj.set_seed(seed_)
+    
     def get_jobs(self) -> list:
         return list(self.jobs.values())
 
@@ -427,10 +469,11 @@ class QueueVertex(Vert):
     It is crucial to point out that in jobs there are simple references to jobs which also should appear in the system.
     """
     
-    def __init__(self, key, obj, name = ""):
+    def __init__(self, key, obj, name = "", **kwargs):
         if not isinstance(obj, Queue):
             raise TypeError("Queue Vertex can only handle Queue object.")
-        super().__init__(key, obj, name)
+        super().__init__(key, obj, name, **kwargs)
+        self.obj.set_seed(self._seed)
         self.jobs = {}
     
     def get_servers(self) -> list:
@@ -468,6 +511,13 @@ class QueueVertex(Vert):
 
     def set_intensities(self, ints_):
         self.obj.set_intensities(ints_)
+    
+    def set_seed(self, seed_):
+        # super().set_seed(seed_)
+        self._seed = seed_
+        self.obj.set_seed(self._seed)
+
+
     
     def _set_payload(self, payload, serverId = -1):
         """"Set payload to the server. Return -1 if payload was rejected and id of the server if it was succesfull."""
@@ -609,15 +659,15 @@ class QueueVertex(Vert):
         repr += "}"
         return repr
         
-        
+
 
 
 class LeavingtVertex(Vert):
     """Vertex representing system exit. It is good idea to set only one LeavingVertex in a system and connect it with all finished queues.
     
     """
-    def __init__(self, key, name = ""):
-        super().__init__(key, None, name)
+    def __init__(self, key, name = "", **kwargs):
+        super().__init__(key, None, name, **kwargs)
         self.jobs = {}
         self.job_counter = 0
 
@@ -653,7 +703,9 @@ class LeavingtVertex(Vert):
             vert{}[shape=none, label="DONE"];
         """.format(self.key)
         return repr
-        
+    
+
+
 
 class Graph:
     """
@@ -664,19 +716,25 @@ class Graph:
     verts   [dict]  list of vertices in a graph
     edges   [list]  list of edges in a graph
     starting vetex  [Vert]  Starting node for the graph.
+    seed_   [int]   seed for simulation. Default = -1. If value is negative then it generate by itself new seed.
     """
-    def __init__(self, starting_vert, use_name : bool = False, starting_name : str = "Arrival"):
+    def __init__(self, starting_vert, use_name : bool = False, starting_name : str = "Arrival", seed_ = -1):
         if not isinstance(starting_vert, ArrivalProcess):
             raise TypeError("Starting vertex should be arrival vertex.")
         self.key_counter = 0
+        #Set seed
+        if isinstance(seed_, int):
+            self._seed = seed_ if seed_ >= 0 else int("".join([str(i) for i in np.random.randint(0,10,6)]))
+        else:
+            raise TypeError("seed_ parameter must be an integer.")
         if use_name:
             self.toggle_names = True
             key = starting_name
-            self.starting_vert = ArrivalVertex(0, starting_vert, starting_name) 
+            self.starting_vert = ArrivalVertex(0, starting_vert, starting_name, seed_ = self._seed) 
         else:
             self.toggle_names = False
             key = 0
-            self.starting_vert = ArrivalVertex(0, starting_vert) 
+            self.starting_vert = ArrivalVertex(0, starting_vert, seed_ = self._seed)
 
         self.verts = {
             key : self.starting_vert
@@ -699,14 +757,21 @@ class Graph:
             #Then prev_node_id should be a string
             if not prev_node_id in self.verts or not name:
                 raise ValueError("Given node do not exist or name is not specified.")
+            #Verify if node exists
+            if name in self.verts:
+                raise ValueError("Given node alerady exists in queuing system.")
         elif prev_node_id > self.key_counter:
             raise ValueError("Given node do not exist.")
         
         self.key_counter += 1
         if type(obj) == Queue:
-            new_vert = QueueVertex(self.key_counter, obj, name)
+            new_vert = QueueVertex(self.key_counter, obj, name, seed_ = self._seed)
         elif obj == None:
-            new_vert = LeavingtVertex(self.key_counter, name)
+            # Check if graph have LeavingVertex already
+            for vert in self.verts.values():
+                if type(vert) == LeavingtVertex:##REPLACE TO ANY
+                    raise TypeError("In queuing system must be only one LeavingVertex.")
+            new_vert = LeavingtVertex(self.key_counter, name, seed_ = self._seed)
         else:
             raise TypeError("Invalid object type.")
         if self.toggle_names:
@@ -736,7 +801,43 @@ class Graph:
                 raise RoutingError("ArrivalVertex cannot be the endpoint of any route.")
         for vert in self.verts.values():
             if vert.get_routes():
-                vert._check_routes_()
+                try:
+                    vert._check_routes_()
+                except MathError as e:
+                    if self.toggle_names:
+                        raise MathError("At node {}. Routes weights should sum up to 1.".format(vert.name)) from e
+                    raise MathError("At node {}. Routes weights should sum up to 1.".format(vert.key)) from e
+        # Check if for all QueueVertex objects LeavingVertex is reachable
+        qu_verts = []
+        leaving_vert = None
+        for vert in self.verts.values():
+            if type(vert) == QueueVertex:
+                qu_verts.append(vert)
+            elif type(vert) == LeavingtVertex:
+                leaving_vert = vert
+        if not leaving_vert:
+            raise QueueingSystemError("System do not has LeavingVertex object.")
+        for vert in qu_verts:
+            if not self._is_reachable_(vert, leaving_vert):
+                id_ = vert.name if self.toggle_names else vert.get_key()
+                raise QueueingSystemError("QueuingVertex {} do not have access to LeavingVertex.".format(id_))
+
+    def _is_reachable_(self, u : Vert, v : Vert):
+        visited = { id_ : False for id_ in self.verts.keys()}
+        queue_ = QueueDataStructure()
+        queue_.enqueue(u)
+        visited[u.get_key()] = True
+        # print(visited)
+        while not queue_.is_empty():
+            vert = queue_.dequeue()
+            if vert == v:
+                return True
+            for route in vert.get_routes():
+                vert2 = route.get_end()
+                if not visited[vert2.get_key()]:
+                    queue_.enqueue(vert2)
+                    visited[vert2.get_key()] = True
+        return False
 
     def __contains__(self, key : int) -> bool:
         return key in self.verts
@@ -787,22 +888,10 @@ class Graph:
                 repr += 'vert{} -> vert{}[label="p={}"];\n'.format(edge.from_.key, edge.to_.key, edge.prob)
         repr += "}"
         return repr
-
-    # def dot_repr(self) -> str:
-    #     """
-    #     Generate dot representation.
-    #     """
-    #     out = "digraph G{"
-    #     verts = {}
-    #     for i in self.edges:
-    #         fr, to = i.get_beg().get_key(), i.get_end().get_key()
-    #         verts[fr], verts[to] = None, None
-    #         out += "{}->{};".format(fr, to)
-    #     for i in self.verts:
-    #         if self.verts[i].get_key() not in verts:
-    #             out += " " + str(self.verts[i].get_key()) + " "
-    #     out += "}"
-    #     return out
+    
+    def set_seed(self, seed_):
+        self._seed = seed_
+        [*map(lambda vert: vert.set_seed(self._seed), self.get_vertices().values())]
 
 
 
@@ -830,8 +919,8 @@ class ArrivalProcess():
     
 
     @staticmethod
-    @jit(nopython = True)
-    def poisson_process(t : float, lbd : float) -> list:
+    # @jit(nopython = True)
+    def poisson_process(t : float, lbd : float, gen_) -> list:
         """
         Return steps moments from poisson process.\n
         If time is to short then may happen that no step moment appears.
@@ -843,11 +932,11 @@ class ArrivalProcess():
         -----------
         steps   [list]  list of floating points representing moments of poisson process
         """
-        ts = -log(random.random()) / lbd
+        ts = -log(gen_.random()) / lbd
         out = []
         while ts <= t:
             out.append(ts)
-            ts -= log(random.random()) / lbd
+            ts -= log(gen_.random()) / lbd
         return out
 
     # arrival_process = {
@@ -856,7 +945,7 @@ class ArrivalProcess():
     # }
 
 
-    def __init__(self, intensity, type_  = "Poisson"):
+    def __init__(self, intensity, type_  = "Poisson", seed_ = -1):
         """sumary_line
         
         Args
@@ -867,7 +956,12 @@ class ArrivalProcess():
         
         if type_ not in arrival_process.keys():
             raise ValueError("Invalid Arrival process")
-        
+        #Set generator
+        if isinstance(seed_, int):
+            self._seed = seed_ if seed_ >= 0 else int("".join([str(i) for i in np.random.randint(0,10,6)]))
+            self._generator = np.random.default_rng(seed = self._seed)
+        else:
+            raise TypeError("seed_ parameter must be an integer.")
         # self.process = ArrivalProcess.arrival_process[type]
         self.process_type = type_
         self.process = arrival_process[type_]
@@ -877,7 +971,7 @@ class ArrivalProcess():
         self.current_time = 0
     
     def generate_arrivals(self, finish_time : float):
-        self.arrivals = np.array(self.process(finish_time, self.intensity))
+        self.arrivals = np.array(self.process(finish_time, self.intensity, self._generator))
         self.arrivals += self.current_time
         self.arrivals_number += len(self.arrivals)
         self.current_time = finish_time
@@ -907,11 +1001,22 @@ class ArrivalProcess():
         self.process_type = type_
         self.process = arrival_process[type_]
     
+    def set_generator(self, gen_) -> None:
+        """Set generator for the queue."""
+        self._generator = gen_
+    
+    def set_seed(self, seed_):
+        self._seed = seed_
+        self._generator = np.random.default_rng(seed = self._seed)
+
     def __str__(self):
         return "Arrival Process:{} with intensity {}".format(self.process_type, self.intensity)
 
     def __repr__(self):
         return str(self)
+    
+    def get_seed(self):
+        return self._seed
         
 
 
@@ -957,18 +1062,22 @@ class Server():
     """
 
     @staticmethod
-    @jit(nopython = True)
-    def rand_exp(intensity : float):
-        return -log(random.random()) / intensity
+    # @jit(nopython = True)
+    def rand_exp(intensity : float, gen_):
+        return -log(gen_.random()) / intensity
 
-    def __init__(self, intensity, service_process):
+    def __init__(self, intensity, service_process, seed_ = -1):
         if service_process not in rand_function.keys():
             raise ValueError("No such random number generator.")
         self.intensity = intensity
         self.service_time_generator = rand_function[service_process]
         self.service_type = service_process + "(" + str(intensity) + ")"
         self.payload = 0
-
+        if isinstance(seed_, int):
+            self._seed = seed_ if seed_ >= 0 else int("".join([str(i) for i in np.random.randint(0,10,6)]))
+            self._generator = np.random.default_rng(seed = self._seed)
+        else:
+            raise TypeError("gen_ parameter must be np.random.Generator or numeric value.")
     
     def get_instensity(self):
         return self.intensity
@@ -988,6 +1097,14 @@ class Server():
         self.service_time_generator = rand_function[func]
         self.service_type = func
     
+    def set_generator(self, gen_) -> None:
+        """Set generator for the queue."""
+        self._generator = gen_
+
+    def set_seed(self, seed_) -> None:
+        self._seed = seed_
+        self._generator = np.random.default_rng(seed = seed_)
+
     def set_payload(self, payload):
         """Set payload to the server. If the server is busy, then do not push payload to the server and return False
         
@@ -1008,7 +1125,7 @@ class Server():
     
     def service(self):
         """Return the end of the payload service time."""
-        time = self.service_time_generator(self.intensity)
+        time = self.service_time_generator(self.intensity, self._generator)
         return time
     
     def remove_payload(self):
@@ -1027,6 +1144,9 @@ class Server():
 
     def __contains__(self, jobId_):
         return self.payload == jobId_
+    
+    def get_seed(self):
+        return self._seed
 
 
 
@@ -1125,7 +1245,16 @@ class Queue():
     """
 
     
-    def __init__(self, intensity, service_time, rule_ = "FIFO", buffer_cap_ = INF, servers_number : int = 1):
+    def __init__(self, intensity, service_time, rule_ = "FIFO", buffer_cap_ = INF, servers_number : int = 1, seed_ = -1):
+        """sumary_line
+        
+        Args
+        ----
+        [DEPRACIETED]gen_    [np.random.Generator or int]    [Default = -1]     Set generator for queue. If passed generator then set reference to it. If numeric values was given, then set it as seed.
+                If negative value was given, then create generator witout provided seed.
+        """
+        
+
         #Input validation
         if isinstance(service_time, str):
             if isinstance(intensity, (float, int)):
@@ -1172,6 +1301,9 @@ class Queue():
             self.total_capacity = buffer_cap_ + servers_number
         else:
             self.total_capacity = INF
+        #Set seed
+        self._seed = seed_ if seed_ >= 0 else int("".join([str(i) for i in np.random.randint(0,10,6)]))
+        self.set_seed(self._seed)
 
     def __str__(self):
         servers = ""
@@ -1200,6 +1332,19 @@ class Queue():
         for server, intensity in zip(self.servers, ints_):
             server.set_intensity(int_)
     
+    def set_generator(self, gen_) -> None:
+        """Set generator for the queue."""
+        self._generator = gen_
+        [*map(lambda server: server.set_seed(gen_), self.servers)]
+    
+    def set_seed(self, seed_):
+        self._seed = seed_
+        gen = np.random.default_rng(seed = self._seed)
+        self.set_generator(gen)
+    
+    def get_seed(self):
+        return self._seed
+
     def set_payload(self, payload, serverId = -1):
         """
         Set payload, to selected server. serverId is the index of the server on server list. Default serverId is -1, what is interpreted fo find empty server.
@@ -1464,7 +1609,7 @@ class System():
     
     """
     
-    def __init__(self, arrival_process_, use_name : bool = False, starting_name : str = "Arrival"):
+    def __init__(self, arrival_process_, use_name : bool = False, starting_name : str = "Arrival", seed_ : int = -1):
         """sumary_line
         
         Arguments
@@ -1472,18 +1617,21 @@ class System():
         arrival_process [tuple] tuple (process_type_string, intensity) or  number intensity for initialization an arrival process. If providen number then Poisson Process used.
         jobs    [list]  list of jobs in the system
         time    [float] Time value. It represent time from begining of system start. While the time is provided and system started then arrivals are generated and entering the system events added to event heap. During simulation components resolve jobs and genetate next event which are moved at the heap, therefore all events are consiedr i chronologic way.
+        seed_   [int]   Seed for a generator. Dafault -1. If value is negative then initialize rng without fixed seed.
         """
         if isinstance(arrival_process_, tuple):
             arrival_process = ArrivalProcess(arrival_process_[0], arrival_process_[1])
         else:
             arrival_process = ArrivalProcess(arrival_process_)
-        self.system_graph = Graph(arrival_process, use_name, starting_name)
+        self._seed = seed_ if seed_ >= 0 else int("".join([str(i) for i in np.random.randint(0,10,6)]))
+        self.system_graph = Graph(arrival_process, use_name, starting_name, self._seed)
         self.jobs = {}
         self.event_heap = BinaryHeap()
         self.time = 0
         self.history = []
         self._toogle_names = use_name
         self.valid_graph = False
+        self.total_time = 0
 
     def add_node(self, prev_node, node, prob = 1, name = "") -> None:
         """Add new component to the system. It is crucial to point out that this method add route from existing node to this new node so you cannot pass Arrival Process.
@@ -1525,10 +1673,14 @@ class System():
     def get_vertices(self):
         return self.system_graph.get_vertices()
 
-    def run(self, time_, verbose = False):
+    def run(self, time_, verbose = False, force_validation = False):
+        # print("TEST")
+        # print(time_)
         if time_ < 0:
             raise ValueError("Finish time should be positive number.")
         #Check graph
+        if force_validation :
+            self.valid_graph = False
         if not self.valid_graph:
             self.system_graph._graph_validation_()
             self.valid_graph = True
@@ -1570,17 +1722,19 @@ class System():
                     self.event_heap.insert(ev)
                 # map(lambda t: self.event_heap.insert(t), events)
         
-    def initialize_simulation(self, time_):
+    def initialize_simulation(self, time_, force_validation = False, reset_seed = False):
         """Initialize simulation. Clean after previous simulatoins and generate arrivals. Then build event heap.
         """
         if time_ < 0:
             raise ValueError("Finish time should be positive number.")
         #Check graph
+        if force_validation :
+            self.valid_graph = False
         if not self.valid_graph:
             self.system_graph._graph_validation_()
             self.valid_graph = True
         #reset system
-        self.reset()
+        self.reset(reset_seed = reset_seed)
         # Generate events 
         num = 0
         events = []
@@ -1593,15 +1747,27 @@ class System():
             events.extend(ev)
             num = arrVert.get_arrivals_number()
         self.event_heap.build_heap(events)
+        self.total_time = time_
         
-    def move_to(self, time_, relative = True , verbose = False):
+    def move_to(self, time_, relative = False , verbose = False, force_validation = False):
+        #Check graph
+        if force_validation :
+            self.valid_graph = False
+        if not self.valid_graph:
+            self.system_graph._graph_validation_()
+            self.valid_graph = True
         # Set relative time
         if relative:
             time_ += self.time
-        else:
-            # Actually we do not support to go backward
-            if time_ < self.time:
-                raise ValueError("Cannot travel to the past in simulation.")
+        if time_ < self.time:
+            if time_ <= 0:
+                raise ValueError("Time should be positive.")
+            ttime = self.total_time
+            self.set_seed(self._seed)
+            self.initialize_simulation(ttime)
+            self.move_to(time_, verbose = verbose)
+            return
+                # raise ValueError("Cannot travel to the past in simulation.")
         # Trigger all events
         while not self.event_heap.is_empty():
             # Tuple conditiona assignment hack
@@ -1642,18 +1808,27 @@ class System():
     def get_history(self) -> list:
         return self.history
 
+    def set_seed(self, seed_):
+        # self._generator = np.random.default_rng(seed = seed_)
+        self._seed = seed_
+        self.system_graph.set_seed(self._seed)
+        # [*map(lambda vert: vert.set_seed(seed_), self.system_graph.get_vertices().values())]
+
     def __str__(self):
         return "{}".format(self.system_graph)
     
     def __repr__(self):
         return str(self)
     
-    def reset(self):
+    def reset(self, reset_seed : bool = False):
         self.jobs = {}
         self.event_heap = BinaryHeap()
         self.time = 0
         self.history = []
+        self.total_time = 0
         [*map(lambda t: t.reset(), self.system_graph.get_vertices().values())]
+        if reset_seed:
+            self.system_graph.set_seed(self._seed)
     
     def dot_repr(self):
         repr = self.system_graph.dot_repr()
@@ -1782,7 +1957,7 @@ if __name__ == "__main__":
     print(ev.get_type())
 
     #Test arrival process
-    print(ArrivalProcess.poisson_process(10,.3))
+    print(ArrivalProcess.poisson_process(10,.3), self._generator)
     arrPr = ArrivalProcess(3)
     arrPr.generate_arrivals(4)
     print(arrPr.get_arrivals())
