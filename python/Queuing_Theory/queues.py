@@ -277,6 +277,7 @@ class Vert:
         # Set seed
         if isinstance(seed_, int):
             self._seed = seed_ if seed_ >= 0 else int("".join([str(i) for i in np.random.randint(0,10,6)]))
+            self._generator = np.random.default_rng(seed = self._seed)
         else:
             raise TypeError("seed must be integer value.")
             
@@ -310,6 +311,7 @@ class Vert:
     
     def set_seed(self, seed_):
         self._seed = seed_
+        self._generator = np.random.default_rng(seed = seed_)
     
     def get_seed(self):
         return self._seed
@@ -1856,7 +1858,7 @@ class System():
         while step <= time_:
             it += 1
             step += step_
-            self.move_to(step_)
+            self.move_to(step_, relative = True)
             self.save_graph(name = "{}/Queue_gif{}".format(bufferDir, it))
         # If the last step not correspond to the end of simulation perform it manually
         if step > time_:
